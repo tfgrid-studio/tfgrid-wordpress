@@ -8,39 +8,171 @@ Deploy a production-ready WordPress installation with:
 - **WordPress** - Latest official Docker image
 - **MariaDB** - Database backend with health checks
 - **Caddy** - Automatic HTTPS with Let's Encrypt
+- **Automatic DNS** - Optional DNS A record creation (Name.com, Namecheap, Cloudflare)
 
 ## Quick Start
 
+### Basic Deployment (Interactive)
+
+The easiest way to deploy - answers questions interactively:
+
 ```bash
-# Deploy with tfgrid-compose
-tfgrid-compose up tfgrid-wordpress
+tfgrid-compose up tfgrid-wordpress -i
+```
 
-# Or manually:
-cp .env.example .env
-# Edit .env with your domain
-nano .env
+This will prompt you for:
+1. Domain name
+2. DNS provider (optional automatic setup)
+3. WordPress settings
+4. Resource allocation
+5. Node selection
 
-# Deploy
-tfgrid-compose up .
+### One-Line Deployment
+
+Deploy with all settings on the command line:
+
+```bash
+tfgrid-compose up tfgrid-wordpress \
+  --env DOMAIN=blog.example.com \
+  --env SSL_EMAIL=admin@example.com \
+  --env WP_SITE_TITLE="My Blog" \
+  --env WP_ADMIN_EMAIL=admin@example.com
+```
+
+### Full Deployment Example
+
+Complete deployment with DNS automation and all options:
+
+```bash
+# With Name.com DNS automation
+tfgrid-compose up tfgrid-wordpress \
+  --env DOMAIN=blog.example.com \
+  --env SSL_EMAIL=admin@example.com \
+  --env DNS_PROVIDER=name.com \
+  --env NAMECOM_USERNAME=myuser \
+  --env NAMECOM_API_TOKEN=your-api-token \
+  --env WP_SITE_TITLE="My Awesome Blog" \
+  --env WP_ADMIN_USER=myadmin \
+  --env WP_ADMIN_EMAIL=admin@example.com \
+  --env PHP_MEMORY_LIMIT=512M \
+  --env PHP_UPLOAD_MAX=128M \
+  --cpu 2 \
+  --memory 4096 \
+  --disk 100
+
+# With Cloudflare DNS automation
+tfgrid-compose up tfgrid-wordpress \
+  --env DOMAIN=blog.example.com \
+  --env DNS_PROVIDER=cloudflare \
+  --env CLOUDFLARE_API_TOKEN=your-cf-token \
+  --env WP_SITE_TITLE="My Blog"
+
+# With Namecheap DNS automation
+tfgrid-compose up tfgrid-wordpress \
+  --env DOMAIN=blog.example.com \
+  --env DNS_PROVIDER=namecheap \
+  --env NAMECHEAP_API_USER=myuser \
+  --env NAMECHEAP_API_KEY=your-api-key
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DOMAIN` | Yes | Public domain for WordPress |
-| `SSL_EMAIL` | No | Email for Let's Encrypt |
-| `DB_PASSWORD` | No | MariaDB password (auto-generated) |
-| `DB_ROOT_PASSWORD` | No | MariaDB root password (auto-generated) |
+#### Domain & SSL
 
-### Example .env
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DOMAIN` | **Yes** | - | Public domain for WordPress |
+| `SSL_EMAIL` | No | - | Email for Let's Encrypt certificates |
+
+#### DNS Automation
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DNS_PROVIDER` | No | `manual` | DNS provider: `manual`, `name.com`, `namecheap`, `cloudflare` |
+| `NAMECOM_USERNAME` | If name.com | - | Name.com username |
+| `NAMECOM_API_TOKEN` | If name.com | - | Name.com API token |
+| `NAMECHEAP_API_USER` | If namecheap | - | Namecheap API username |
+| `NAMECHEAP_API_KEY` | If namecheap | - | Namecheap API key |
+| `CLOUDFLARE_API_TOKEN` | If cloudflare | - | Cloudflare API token |
+
+#### WordPress Settings
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `WP_ADMIN_USER` | No | `admin` | WordPress admin username |
+| `WP_ADMIN_EMAIL` | No | - | WordPress admin email |
+| `WP_SITE_TITLE` | No | `My WordPress Site` | Site title |
+| `WP_LOCALE` | No | `en_US` | Language/locale code |
+
+#### Performance
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PHP_MEMORY_LIMIT` | No | `256M` | PHP memory limit |
+| `PHP_UPLOAD_MAX` | No | `64M` | Maximum upload file size |
+| `WP_DEBUG` | No | `false` | Enable debug mode |
+
+#### Database
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DB_PASSWORD` | No | auto-generated | MariaDB password |
+| `DB_ROOT_PASSWORD` | No | auto-generated | MariaDB root password |
+
+#### Backup
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `BACKUP_RETENTION_DAYS` | No | `30` | Days to keep backups |
+
+## DNS Setup
+
+### Automatic DNS (Recommended)
+
+Use `-i` interactive mode or set `DNS_PROVIDER` to automatically create DNS A records:
 
 ```bash
-DOMAIN=blog.example.com
-SSL_EMAIL=admin@example.com
+# Interactive - will prompt for credentials
+tfgrid-compose up tfgrid-wordpress -i
+
+# Or specify provider and credentials
+tfgrid-compose up tfgrid-wordpress \
+  --env DOMAIN=blog.example.com \
+  --env DNS_PROVIDER=cloudflare \
+  --env CLOUDFLARE_API_TOKEN=your-token
 ```
+
+### Manual DNS
+
+If using `DNS_PROVIDER=manual` (default), you'll need to:
+
+1. Deploy the app to get the server IP
+2. Create an A record with your DNS provider:
+   - **Name**: `blog` (or `@` for root domain)
+   - **Type**: `A`
+   - **Value**: `<server-ip>`
+   - **TTL**: `300`
+3. Wait 1-5 minutes for propagation
+
+### Getting DNS API Credentials
+
+#### Name.com
+1. Log in to [Name.com](https://www.name.com)
+2. Go to Account → API Token
+3. Generate a new token
+
+#### Namecheap
+1. Log in to [Namecheap](https://www.namecheap.com)
+2. Go to Profile → Tools → API Access
+3. Enable API and whitelist your IP
+4. Copy API Key
+
+#### Cloudflare
+1. Log in to [Cloudflare](https://dash.cloudflare.com)
+2. Go to My Profile → API Tokens
+3. Create token with "Edit zone DNS" permission
 
 ## Commands
 
