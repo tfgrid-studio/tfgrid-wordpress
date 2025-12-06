@@ -1,0 +1,91 @@
+name: tfgrid-wordpress
+version: "1.0.0"
+description: Self-hosted WordPress with Caddy and MariaDB
+
+patterns:
+  recommended: single-vm
+  supported:
+    - single-vm
+
+resources:
+  cpu:
+    min: 1
+    recommended: 2
+  memory:
+    min: 1024
+    recommended: 2048
+  disk:
+    min: 20
+    recommended: 50
+  ports:
+    - 22:ssh
+    - 80:http
+    - 443:https
+
+hooks:
+  setup: deployment/setup.sh
+  configure: deployment/configure.sh
+  healthcheck: deployment/healthcheck.sh
+
+environment:
+  - name: DOMAIN
+    required: true
+    description: "Public domain for WordPress (e.g., blog.example.com)"
+  - name: SSL_EMAIL
+    required: false
+    description: "Email for Let's Encrypt SSL certificates"
+  - name: DB_PASSWORD
+    required: false
+    secret: true
+    description: "MariaDB password (auto-generated if not set)"
+  - name: DB_ROOT_PASSWORD
+    required: false
+    secret: true
+    description: "MariaDB root password (auto-generated if not set)"
+
+commands:
+  backup:
+    script: /opt/wordpress/scripts/backup.sh
+    description: "Create full backup (files + database)"
+    args: "[--output /path/to/backup.tar.gz]"
+  restore:
+    script: /opt/wordpress/scripts/restore.sh
+    description: "Restore from backup"
+    args: "--backup /path/to/backup.tar.gz"
+  list-backups:
+    script: /opt/wordpress/scripts/list-backups.sh
+    description: "List available backups"
+  logs:
+    script: /opt/wordpress/scripts/logs.sh
+    description: "View WordPress and MariaDB logs"
+    args: "[wordpress|db|caddy] [--follow]"
+  shell:
+    script: /opt/wordpress/scripts/shell.sh
+    description: "Open WordPress container shell"
+  wp:
+    script: /opt/wordpress/scripts/wp-cli.sh
+    description: "Run WP-CLI commands"
+    args: "<wp-cli-command>"
+  restart:
+    script: /opt/wordpress/scripts/restart.sh
+    description: "Restart WordPress services"
+
+status:
+  check_interval: 60
+  endpoints:
+    - path: /
+      expected_status: 200
+
+logging:
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+tags:
+  - wordpress
+  - cms
+  - blog
+  - docker
+  - caddy
+  - mariadb
