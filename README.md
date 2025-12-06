@@ -164,10 +164,15 @@ If using `DNS_PROVIDER=manual` (default), you'll need to:
 3. Generate a new token
 
 #### Namecheap
+⚠️ **Note**: Namecheap requires IP whitelisting before API calls work.
+
 1. Log in to [Namecheap](https://www.namecheap.com)
 2. Go to Profile → Tools → API Access
-3. Enable API and whitelist your IP
-4. Copy API Key
+3. Enable API access
+4. **Whitelist your current IP** (required before API works)
+5. Copy API Key
+
+Your IP must be whitelisted before running `tfgrid-compose up -i`. The interactive mode will show your current IP and ask you to confirm it's whitelisted.
 
 #### Cloudflare
 1. Log in to [Cloudflare](https://dash.cloudflare.com)
