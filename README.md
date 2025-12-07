@@ -1,5 +1,9 @@
 # TFGrid WordPress
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/tfgrid-studio/tfgrid-wordpress)](https://github.com/tfgrid-studio/tfgrid-wordpress/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/tfgrid-studio/tfgrid-wordpress)](https://github.com/tfgrid-studio/tfgrid-wordpress/issues)
+
 Self-hosted WordPress with Caddy and MariaDB on ThreeFold Grid.
 
 ## Overview
