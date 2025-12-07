@@ -71,21 +71,13 @@ tfgrid-compose up tfgrid-wordpress \
   --env CLOUDFLARE_API_TOKEN=your-cf-token \
   --env WP_SITE_TITLE="My Blog"
 
-# With GoDaddy DNS automation (recommended - fully automated)
+# With GoDaddy DNS automation
 tfgrid-compose up tfgrid-wordpress \
   --env DOMAIN=blog.example.com \
   --env DNS_PROVIDER=godaddy \
   --env GODADDY_API_KEY=your-api-key \
   --env GODADDY_API_SECRET=your-api-secret \
   --env WP_SITE_TITLE="My Blog"
-
-# With Namecheap DNS (requires manual IP whitelisting - not fully automated)
-# You must first whitelist your IP at: Namecheap → Profile → Tools → API Access
-tfgrid-compose up tfgrid-wordpress \
-  --env DOMAIN=blog.example.com \
-  --env DNS_PROVIDER=namecheap \
-  --env NAMECHEAP_API_USER=myuser \
-  --env NAMECHEAP_API_KEY=your-api-key
 ```
 
 ## Configuration
@@ -101,18 +93,14 @@ tfgrid-compose up tfgrid-wordpress \
 
 #### DNS Automation
 
-> **Recommended:** Use `name.com`, `cloudflare`, or `godaddy` for fully automated DNS setup. Namecheap requires manual IP whitelisting in their dashboard before API calls work.
-
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DNS_PROVIDER` | No | `manual` | DNS provider: `manual`, `name.com`, `cloudflare`, `godaddy`, `namecheap` |
+| `DNS_PROVIDER` | No | `manual` | DNS provider: `manual`, `name.com`, `cloudflare`, `godaddy` |
 | `NAMECOM_USERNAME` | If name.com | - | Name.com username |
 | `NAMECOM_API_TOKEN` | If name.com | - | Name.com API token |
 | `CLOUDFLARE_API_TOKEN` | If cloudflare | - | Cloudflare API token |
 | `GODADDY_API_KEY` | If godaddy | - | GoDaddy API key |
 | `GODADDY_API_SECRET` | If godaddy | - | GoDaddy API secret |
-| `NAMECHEAP_API_USER` | If namecheap | - | Namecheap API username (requires IP whitelisting) |
-| `NAMECHEAP_API_KEY` | If namecheap | - | Namecheap API key (requires IP whitelisting) |
 
 #### WordPress Settings
 
