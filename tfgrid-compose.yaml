@@ -36,7 +36,7 @@ environment:
     required: false
     description: "Email for Let's Encrypt SSL certificates"
     
-  # DNS Automation (name.com and cloudflare recommended for full automation)
+  # DNS Automation (name.com, cloudflare, godaddy recommended for full automation)
   - name: DNS_PROVIDER
     required: false
     description: "DNS provider for automatic A record setup"
@@ -44,6 +44,7 @@ environment:
       - manual
       - name.com
       - cloudflare
+      - godaddy
       - namecheap  # Requires manual IP whitelisting in Namecheap dashboard
     default: "manual"
   - name: NAMECOM_USERNAME
@@ -63,6 +64,17 @@ environment:
     description: "Cloudflare API token"
     depends_on:
       DNS_PROVIDER: "cloudflare"
+  - name: GODADDY_API_KEY
+    required: false
+    description: "GoDaddy API key"
+    depends_on:
+      DNS_PROVIDER: "godaddy"
+  - name: GODADDY_API_SECRET
+    required: false
+    secret: true
+    description: "GoDaddy API secret"
+    depends_on:
+      DNS_PROVIDER: "godaddy"
   - name: NAMECHEAP_API_USER
     required: false
     description: "Namecheap API username (requires IP whitelisting - not fully automated)"
