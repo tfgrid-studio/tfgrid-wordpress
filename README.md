@@ -48,7 +48,7 @@ tfgrid-compose up tfgrid-wordpress \
 Complete deployment with DNS automation and all options:
 
 ```bash
-# With Name.com DNS automation
+# With Name.com DNS automation (recommended - fully automated)
 tfgrid-compose up tfgrid-wordpress \
   --env DOMAIN=blog.example.com \
   --env SSL_EMAIL=admin@example.com \
@@ -64,14 +64,15 @@ tfgrid-compose up tfgrid-wordpress \
   --memory 4096 \
   --disk 100
 
-# With Cloudflare DNS automation
+# With Cloudflare DNS automation (recommended - fully automated)
 tfgrid-compose up tfgrid-wordpress \
   --env DOMAIN=blog.example.com \
   --env DNS_PROVIDER=cloudflare \
   --env CLOUDFLARE_API_TOKEN=your-cf-token \
   --env WP_SITE_TITLE="My Blog"
 
-# With Namecheap DNS automation
+# With Namecheap DNS (requires manual IP whitelisting - not fully automated)
+# You must first whitelist your IP at: Namecheap → Profile → Tools → API Access
 tfgrid-compose up tfgrid-wordpress \
   --env DOMAIN=blog.example.com \
   --env DNS_PROVIDER=namecheap \
@@ -92,14 +93,16 @@ tfgrid-compose up tfgrid-wordpress \
 
 #### DNS Automation
 
+> **Recommended:** Use `name.com` or `cloudflare` for fully automated DNS setup. Namecheap requires manual IP whitelisting in their dashboard before API calls work.
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DNS_PROVIDER` | No | `manual` | DNS provider: `manual`, `name.com`, `namecheap`, `cloudflare` |
+| `DNS_PROVIDER` | No | `manual` | DNS provider: `manual`, `name.com`, `cloudflare`, `namecheap` |
 | `NAMECOM_USERNAME` | If name.com | - | Name.com username |
 | `NAMECOM_API_TOKEN` | If name.com | - | Name.com API token |
-| `NAMECHEAP_API_USER` | If namecheap | - | Namecheap API username |
-| `NAMECHEAP_API_KEY` | If namecheap | - | Namecheap API key |
 | `CLOUDFLARE_API_TOKEN` | If cloudflare | - | Cloudflare API token |
+| `NAMECHEAP_API_USER` | If namecheap | - | Namecheap API username (requires IP whitelisting) |
+| `NAMECHEAP_API_KEY` | If namecheap | - | Namecheap API key (requires IP whitelisting) |
 
 #### WordPress Settings
 
