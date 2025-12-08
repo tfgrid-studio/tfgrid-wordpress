@@ -33,17 +33,33 @@ apt-get install -y fuse-overlayfs
 configure_docker_storage() {
     local driver="$1"
     echo "🔧 Configuring Docker with storage driver: $driver"
+    
+    # Stop docker first
+    systemctl stop docker 2>/dev/null || true
+    sleep 1
+    
+    # Clear old storage data to prevent conflicts
+    rm -rf /var/lib/docker/* 2>/dev/null || true
+    
+    # Write new config
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json <<EOF
 {
     "storage-driver": "$driver"
 }
 EOF
-    # Stop docker, clear old storage, restart
-    systemctl stop docker 2>/dev/null || true
-    rm -rf /var/lib/docker/* 2>/dev/null || true
+    
+    # Restart docker with new config
     systemctl start docker
-    sleep 2
+    sleep 3
+    
+    # Verify docker is running
+    if ! systemctl is-active --quiet docker; then
+        echo "⚠️ Docker failed to start with $driver driver"
+        return 1
+    fi
+    echo "✅ Docker started with $driver driver"
+    return 0
 }
 
 # Function to test Docker storage driver with an image that has whiteout files
@@ -83,15 +99,26 @@ fi
 # TFGrid VMs have filesystem limitations that prevent overlay2/fuse-overlayfs from working
 echo "🔧 Configuring Docker storage driver for TFGrid compatibility..."
 
+# Disable exit on error for driver testing - we handle failures manually
+set +e
+
 # First try fuse-overlayfs
-configure_docker_storage "fuse-overlayfs"
-if ! test_docker_storage; then
+driver_ok=false
+if configure_docker_storage "fuse-overlayfs" && test_docker_storage; then
+    driver_ok=true
+else
     echo "⚠️ fuse-overlayfs failed, falling back to vfs driver"
-    configure_docker_storage "vfs"
-    if ! test_docker_storage; then
-        echo "❌ All storage drivers failed"
-        exit 1
+    if configure_docker_storage "vfs" && test_docker_storage; then
+        driver_ok=true
     fi
+fi
+
+# Re-enable exit on error
+set -e
+
+if [ "$driver_ok" != "true" ]; then
+    echo "❌ All storage drivers failed"
+    exit 1
 fi
 
 echo "ℹ️ Docker storage driver: $(docker info --format '{{.Driver}}')"
