@@ -22,14 +22,41 @@ apt-get install -y \
     jq \
     pwgen
 
+# Install fuse-overlayfs for Docker storage (required for TFGrid VM compatibility)
+echo "📦 Installing fuse-overlayfs..."
+apt-get install -y fuse-overlayfs
+
 # Install Docker
 if ! command -v docker &> /dev/null; then
     echo "🐳 Installing Docker..."
     curl -fsSL https://get.docker.com | sh
+    
+    # Configure Docker to use fuse-overlayfs storage driver
+    # This is required for TFGrid VMs where overlay2 has compatibility issues
+    echo "🔧 Configuring Docker storage driver..."
+    mkdir -p /etc/docker
+    cat > /etc/docker/daemon.json <<EOF
+{
+    "storage-driver": "fuse-overlayfs"
+}
+EOF
+    
     systemctl enable docker
     systemctl start docker
 else
     echo "✅ Docker already installed"
+    
+    # Ensure fuse-overlayfs is configured even if Docker was pre-installed
+    if [ ! -f /etc/docker/daemon.json ] || ! grep -q "fuse-overlayfs" /etc/docker/daemon.json 2>/dev/null; then
+        echo "🔧 Configuring Docker storage driver..."
+        mkdir -p /etc/docker
+        cat > /etc/docker/daemon.json <<EOF
+{
+    "storage-driver": "fuse-overlayfs"
+}
+EOF
+        systemctl restart docker
+    fi
 fi
 
 # Install Docker Compose plugin
