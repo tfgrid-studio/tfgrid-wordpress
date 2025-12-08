@@ -4,6 +4,9 @@
 
 set -e
 
+# Suppress debconf warnings in non-interactive mode
+export DEBIAN_FRONTEND=noninteractive
+
 echo "🚀 Setting up TFGrid WordPress..."
 
 # Update system
@@ -22,42 +25,78 @@ apt-get install -y \
     jq \
     pwgen
 
-# Install fuse-overlayfs for Docker storage (required for TFGrid VM compatibility)
+# Install fuse-overlayfs for Docker storage (may be needed as fallback)
 echo "📦 Installing fuse-overlayfs..."
 apt-get install -y fuse-overlayfs
+
+# Function to configure Docker storage driver with fallback
+configure_docker_storage() {
+    local driver="$1"
+    echo "🔧 Configuring Docker with storage driver: $driver"
+    mkdir -p /etc/docker
+    cat > /etc/docker/daemon.json <<EOF
+{
+    "storage-driver": "$driver"
+}
+EOF
+    # Stop docker, clear old storage, restart
+    systemctl stop docker 2>/dev/null || true
+    rm -rf /var/lib/docker/* 2>/dev/null || true
+    systemctl start docker
+    sleep 2
+}
+
+# Function to test Docker storage driver
+test_docker_storage() {
+    echo "🧪 Testing Docker storage driver..."
+    if docker pull hello-world >/dev/null 2>&1 && docker run --rm hello-world >/dev/null 2>&1; then
+        echo "✅ Docker storage driver working"
+        docker rmi hello-world >/dev/null 2>&1 || true
+        return 0
+    else
+        echo "⚠️ Docker storage driver test failed"
+        return 1
+    fi
+}
 
 # Install Docker
 if ! command -v docker &> /dev/null; then
     echo "🐳 Installing Docker..."
     curl -fsSL https://get.docker.com | sh
-    
-    # Configure Docker to use fuse-overlayfs storage driver
-    # This is required for TFGrid VMs where overlay2 has compatibility issues
-    echo "🔧 Configuring Docker storage driver..."
-    mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json <<EOF
-{
-    "storage-driver": "fuse-overlayfs"
-}
-EOF
-    
     systemctl enable docker
-    systemctl start docker
+    
+    # Try storage drivers in order of preference: fuse-overlayfs, vfs
+    # TFGrid VMs may have filesystem limitations that prevent overlay2/fuse-overlayfs
+    
+    # First try fuse-overlayfs
+    configure_docker_storage "fuse-overlayfs"
+    if ! test_docker_storage; then
+        echo "⚠️ fuse-overlayfs failed, falling back to vfs driver"
+        configure_docker_storage "vfs"
+        if ! test_docker_storage; then
+            echo "❌ All storage drivers failed"
+            exit 1
+        fi
+    fi
 else
     echo "✅ Docker already installed"
     
-    # Ensure fuse-overlayfs is configured even if Docker was pre-installed
-    if [ ! -f /etc/docker/daemon.json ] || ! grep -q "fuse-overlayfs" /etc/docker/daemon.json 2>/dev/null; then
-        echo "🔧 Configuring Docker storage driver..."
-        mkdir -p /etc/docker
-        cat > /etc/docker/daemon.json <<EOF
-{
-    "storage-driver": "fuse-overlayfs"
-}
-EOF
-        systemctl restart docker
+    # Check if current storage driver works
+    if ! test_docker_storage; then
+        echo "⚠️ Current Docker storage not working, reconfiguring..."
+        configure_docker_storage "fuse-overlayfs"
+        if ! test_docker_storage; then
+            echo "⚠️ fuse-overlayfs failed, falling back to vfs driver"
+            configure_docker_storage "vfs"
+            if ! test_docker_storage; then
+                echo "❌ All storage drivers failed"
+                exit 1
+            fi
+        fi
     fi
 fi
+
+echo "ℹ️ Docker storage driver: $(docker info --format '{{.Driver}}')"
 
 # Install Docker Compose plugin
 if ! docker compose version &> /dev/null; then
