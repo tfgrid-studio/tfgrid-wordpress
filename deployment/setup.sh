@@ -46,17 +46,30 @@ EOF
     sleep 2
 }
 
-# Function to test Docker storage driver
+# Function to test Docker storage driver with an image that has whiteout files
 test_docker_storage() {
     echo "🧪 Testing Docker storage driver..."
-    if docker pull hello-world >/dev/null 2>&1 && docker run --rm hello-world >/dev/null 2>&1; then
-        echo "✅ Docker storage driver working"
-        docker rmi hello-world >/dev/null 2>&1 || true
-        return 0
+    # Use ubuntu:latest which has whiteout files that trigger overlay issues
+    # hello-world and alpine are too simple
+    local test_output
+    if test_output=$(docker pull ubuntu:latest 2>&1); then
+        # Try to actually run something to ensure extraction worked
+        if docker run --rm ubuntu:latest echo "Storage driver OK" 2>&1; then
+            echo "✅ Docker storage driver working"
+            docker rmi ubuntu:latest >/dev/null 2>&1 || true
+            return 0
+        fi
     else
-        echo "⚠️ Docker storage driver test failed"
-        return 1
+        # Check if the error is about whiteout files (the specific TFGrid issue)
+        if echo "$test_output" | grep -q "whiteout"; then
+            echo "⚠️ Storage driver failed: whiteout file error"
+        else
+            echo "⚠️ Storage driver failed: $test_output"
+        fi
     fi
+    echo "⚠️ Docker storage driver test failed"
+    docker rmi ubuntu:latest >/dev/null 2>&1 || true
+    return 1
 }
 
 # Install Docker
@@ -64,35 +77,20 @@ if ! command -v docker &> /dev/null; then
     echo "🐳 Installing Docker..."
     curl -fsSL https://get.docker.com | sh
     systemctl enable docker
-    
-    # Try storage drivers in order of preference: fuse-overlayfs, vfs
-    # TFGrid VMs may have filesystem limitations that prevent overlay2/fuse-overlayfs
-    
-    # First try fuse-overlayfs
-    configure_docker_storage "fuse-overlayfs"
+fi
+
+# Always configure and test storage driver after Docker is available
+# TFGrid VMs have filesystem limitations that prevent overlay2/fuse-overlayfs from working
+echo "🔧 Configuring Docker storage driver for TFGrid compatibility..."
+
+# First try fuse-overlayfs
+configure_docker_storage "fuse-overlayfs"
+if ! test_docker_storage; then
+    echo "⚠️ fuse-overlayfs failed, falling back to vfs driver"
+    configure_docker_storage "vfs"
     if ! test_docker_storage; then
-        echo "⚠️ fuse-overlayfs failed, falling back to vfs driver"
-        configure_docker_storage "vfs"
-        if ! test_docker_storage; then
-            echo "❌ All storage drivers failed"
-            exit 1
-        fi
-    fi
-else
-    echo "✅ Docker already installed"
-    
-    # Check if current storage driver works
-    if ! test_docker_storage; then
-        echo "⚠️ Current Docker storage not working, reconfiguring..."
-        configure_docker_storage "fuse-overlayfs"
-        if ! test_docker_storage; then
-            echo "⚠️ fuse-overlayfs failed, falling back to vfs driver"
-            configure_docker_storage "vfs"
-            if ! test_docker_storage; then
-                echo "❌ All storage drivers failed"
-                exit 1
-            fi
-        fi
+        echo "❌ All storage drivers failed"
+        exit 1
     fi
 fi
 
