@@ -22,6 +22,9 @@ resources:
     - 80:http
     - 443:https
 
+network:
+  public_ipv4: true
+
 hooks:
   setup: deployment/setup.sh
   configure: deployment/configure.sh
