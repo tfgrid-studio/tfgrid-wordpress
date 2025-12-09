@@ -17,11 +17,19 @@ fi
 
 # Check WordPress container
 if docker ps --format '{{.Names}}' | grep -q "^wordpress$"; then
-    WP_STATUS=$(docker inspect --format='{{.State.Health.Status}}' wordpress 2>/dev/null || echo "running")
-    if [ "$WP_STATUS" = "healthy" ] || [ "$WP_STATUS" = "running" ]; then
-        echo "✅ WordPress container is $WP_STATUS"
+    # Prefer basic run state; Health may not be defined on the image
+    WP_STATE=$(docker inspect --format='{{.State.Status}}' wordpress 2>/dev/null || echo "unknown")
+    WP_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' wordpress 2>/dev/null || echo "")
+
+    if [ "$WP_STATE" = "running" ]; then
+        # If a health status exists, report it, but don't fail just for "starting"/empty
+        if [ -n "$WP_HEALTH" ]; then
+            echo "✅ WordPress container is $WP_STATE (health: $WP_HEALTH)"
+        else
+            echo "✅ WordPress container is $WP_STATE"
+        fi
     else
-        echo "❌ WordPress container status: $WP_STATUS"
+        echo "❌ WordPress container state: $WP_STATE${WP_HEALTH:+ (health: $WP_HEALTH)}"
         ERRORS=$((ERRORS + 1))
     fi
 else

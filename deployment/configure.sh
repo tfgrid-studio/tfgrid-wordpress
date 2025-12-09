@@ -18,6 +18,10 @@ fi
 # Get domain (from tfgrid-compose or .env)
 DOMAIN="${TFGRID_DOMAIN:-${DOMAIN:-localhost}}"
 SSL_EMAIL="${TFGRID_SSL_EMAIL:-${SSL_EMAIL:-}}"
+SCHEME="https"
+if [ "$DOMAIN" = "localhost" ] || [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SCHEME="http"
+fi
 
 echo "🌐 Configuring for domain: $DOMAIN"
 
@@ -111,8 +115,8 @@ cat > /opt/wordpress/config/info.json <<EOF
     "domain": "$DOMAIN",
     "ssl_email": "$SSL_EMAIL",
     "configured_at": "$(date -Iseconds)",
-    "wordpress_url": "https://$DOMAIN",
-    "admin_url": "https://$DOMAIN/wp-admin"
+    "wordpress_url": "$SCHEME://$DOMAIN",
+    "admin_url": "$SCHEME://$DOMAIN/wp-admin"
 }
 EOF
 
@@ -120,8 +124,8 @@ echo ""
 echo "✅ Configuration complete!"
 echo ""
 echo "📝 WordPress Details:"
-echo "   URL: https://$DOMAIN"
-echo "   Admin: https://$DOMAIN/wp-admin"
+echo "   URL: $SCHEME://$DOMAIN"
+echo "   Admin: $SCHEME://$DOMAIN/wp-admin"
 echo ""
 echo "🔧 Management Commands:"
 echo "   Logs: tfgrid-compose logs"
