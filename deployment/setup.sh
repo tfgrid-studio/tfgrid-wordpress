@@ -64,28 +64,51 @@ EOF
 
 # Function to test Docker storage driver with an image that has whiteout files
 test_docker_storage() {
-    echo "🧪 Testing Docker storage driver..."
-    # Use ubuntu:latest which has whiteout files that trigger overlay issues
-    # hello-world and alpine are too simple
-    local test_output
-    if test_output=$(docker pull ubuntu:latest 2>&1); then
-        # Try to actually run something to ensure extraction worked
-        if docker run --rm ubuntu:latest echo "Storage driver OK" 2>&1; then
-            echo "✅ Docker storage driver working"
-            docker rmi ubuntu:latest >/dev/null 2>&1 || true
-            return 0
-        fi
-    else
-        # Check if the error is about whiteout files (the specific TFGrid issue)
-        if echo "$test_output" | grep -q "whiteout"; then
-            echo "⚠️ Storage driver failed: whiteout file error"
-        else
-            echo "⚠️ Storage driver failed: $test_output"
-        fi
-    fi
-    echo "⚠️ Docker storage driver test failed"
-    docker rmi ubuntu:latest >/dev/null 2>&1 || true
-    return 1
+	echo "🧪 Testing Docker storage driver..."
+
+	# Use ubuntu:latest which has whiteout files that trigger overlay issues
+	# hello-world and alpine are too simple
+	local pull_output
+	local run_output
+
+	# First, try to pull the image
+	if ! pull_output=$(docker pull ubuntu:latest 2>&1); then
+		# If we see whiteout/overlay errors, this is a real storage-driver problem
+		if echo "$pull_output" | grep -qi "whiteout"; then
+			echo "⚠️ Storage driver failed: whiteout file error"
+			echo "⚠️ Docker storage driver test failed"
+			docker rmi ubuntu:latest >/dev/null 2>&1 || true
+			return 1
+		fi
+
+		# Detect common registry/network connectivity issues and do NOT
+		# treat them as storage-driver failures. The app will still
+		# ultimately require registry access for its own images, but
+		# we don't want to misclassify this as a driver problem.
+		if echo "$pull_output" | grep -qiE "Client.Timeout|request canceled while waiting for connection|i/o timeout|no such host|temporary failure in name resolution|TLS handshake timeout|connection refused"; then
+			echo "⚠️ Docker registry unreachable during storage driver test (network issue)"
+			echo "⚠️ Skipping strict storage-driver validation but continuing with current driver"
+			return 0
+		fi
+
+		# Unknown pull failure – treat as potential driver issue
+		echo "⚠️ Storage driver failed: $pull_output"
+		echo "⚠️ Docker storage driver test failed"
+		docker rmi ubuntu:latest >/dev/null 2>&1 || true
+		return 1
+	fi
+
+	# Image pulled successfully; now verify we can run a container
+	if run_output=$(docker run --rm ubuntu:latest echo "Storage driver OK" 2>&1); then
+		echo "✅ Docker storage driver working"
+		docker rmi ubuntu:latest >/dev/null 2>&1 || true
+		return 0
+	else
+		echo "⚠️ Docker run failed during storage driver test: $run_output"
+		echo "⚠️ Docker storage driver test failed"
+		docker rmi ubuntu:latest >/dev/null 2>&1 || true
+		return 1
+	fi
 }
 
 # Install Docker
